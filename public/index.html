@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BIP39 → BIP32 Demo</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto,Arial;padding:20px;max-width:900px;margin:auto}
+  textarea{width:100%;height:72px;font-family:monospace}
+  pre{background:#0b1220;color:#dfefff;padding:12px;border-radius:8px;white-space:pre-wrap}
+  .row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  input[type=text]{width:100%}
+</style>
+</head>
+<body>
+  <h1>BIP39 → BIP32 Demo (Browser)</h1>
+  <p>演示：生成助记词、派生 seed、导出 BTC(bech32) & ETH 地址（第 0 个地址）</p>
+
+  <div class="row">
+    <label for="strength">Strength:</label>
+    <select id="strength"><option value="128">12 words (128)</option><option value="160">15 words (160)</option><option value="192">18 words (192)</option><option value="224">21 words (224)</option><option value="256" selected>24 words (256)</option></select>
+    <button id="gen">生成助记词</button>
+    <button id="derive">从助记词派生地址</button>
+  </div>
+
+  <div>
+    <label>Mnemonic:</label>
+    <textarea id="mnemonic" placeholder="或粘贴助记词"></textarea>
+  </div>
+
+  <div class="row">
+    <label for="pass">Passphrase (optional):</label>
+    <input id="pass" type="text" placeholder="(可选)" />
+  </div>
+
+  <h3>结果</h3>
+  <pre id="out">点击“派生地址”以显示结果</pre>
+
+<script type="module">
+/*
+  通过本地 bip_wallet.js 导入（位于 public/）
+  bip_wallet.js 是 ESM 模块，内部依赖 jsDelivr CDN 的加密库。
+*/
+import { generateNewMnemonic, deriveFromMnemonic } from './bip_wallet.js';
+
+const genBtn = document.getElementById('gen');
+const deriveBtn = document.getElementById('derive');
+const mn = document.getElementById('mnemonic');
+const strength = document.getElementById('strength');
+const pass = document.getElementById('pass');
+const out = document.getElementById('out');
+
+genBtn.onclick = () => {
+  const s = Number(strength.value) || 256;
+  mn.value = generateNewMnemonic(s);
+  out.textContent = '助记词已生成（未保存）。';
+};
+
+deriveBtn.onclick = async () => {
+  const m = mn.value.trim();
+  if (!m) { alert('请先输入或生成助记词'); return; }
+  try {
+    out.textContent = '派生中……';
+    // deriveFromMnemonic 返回包含 seed、私钥与地址（演示用）
+    const res = deriveFromMnemonic(m, pass.value || '');
+    // mask seed quickly for UI while showing useful fields
+    const sanitized = {
+      btc: { address: res.btc.address, privateKey: res.btc.privateKey },
+      eth: { address: res.eth.address, privateKey: res.eth.privateKey },
+      seed: res.seed.slice(0, 32) + '…'
+    };
+    out.textContent = JSON.stringify(sanitized, null, 2);
+  } catch (e) {
+    console.error(e);
+    alert('派生失败: ' + (e.message || e));
+    out.textContent = '派生失败: ' + (e.stack || e.message || e);
+  }
+};
+</script>
+</body>
+</html>
